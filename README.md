@@ -1,5 +1,9 @@
 # SimpleGPT
-Simplest ChatGPT clients in various languages through unofficial API - Bash, HTML/JS/CSS and more
+Simplest ChatGPT clients in various languages through unofficial API - Bash, HTML/JS/CSS and more.
+
+Some lines were written with the help of Large Language Models.
+
+**Please, contribute. I will appreciate your code in other languages or {simplification,adding_new_features} to the my scripts.**
 
 ## HTML/JS/CSS
 https://asakura42.github.io/SimpleGPT
