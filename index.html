@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat with AI</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        #chatBox {
+            width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .inputBar {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+        }
+        #userInput {
+            flex-grow: 1;
+            padding: 0.5em;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        #sendButton {
+            padding: 0.5em 1em;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #sendButton:hover {
+            background-color: #0056b3;
+        }
+        .chatMessage {
+            margin: 0.5em;
+            padding: 0.5em;
+            border-radius: 5px;
+            max-width: 80%;
+	    white-space: pre-wrap;
+        }
+        .userMessage {
+            background-color: #007BFF;
+            color: white;
+            align-self: flex-end;
+        }
+        .assistantMessage {
+            background-color: #ddd;
+            align-self: flex-start;
+        }
+    </style>
+</head>
+<body>
+    <div id="chatBox"></div>
+    <div class="inputBar">
+        <textarea id="userInput" placeholder="Enter a prompt"></textarea>
+        <button id="sendButton">Send</button>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+
+        const SYSTEM_PROMPT = "You are ChatGPT, a large language model trained by OpenAI. Answer as concisely as possible. Current date: " + new Date().toLocaleDateString() + ". Knowledge cutoff: 9/1/2021.";
+        const OPENAI_KEY = 'pk-this-is-a-real-free-pool-token-for-everyone';
+        const MODEL = 'gpt-3.5-turbo';
+        const TEMPERATURE = 0.7;
+        const MAX_TOKENS = 4000;
+
+        let chatMessage = [
+            {
+                role: 'system',
+                content: SYSTEM_PROMPT
+            }
+        ];
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                // Prevent the default action (to insert a newline)
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+    function sendMessage() {
+        const userPrompt = userInput.value;
+        userInput.value = '';
+
+        if (userPrompt.trim() === '') return;
+
+        chatMessage.push({
+            role: 'user',
+            content: userPrompt
+        });
+
+        // Immediately display user message
+        displayChat();
+
+	const loadingElement = document.createElement('i');
+	loadingElement.innerText = 'loading...';
+
+
+        // Immediately display loading dots
+	chatMessage.push({
+	    role: 'assistant',
+	    content: loadingElement.outerHTML
+	});
+
+        displayChat();
+
+        fetch('https://ai.fakeopen.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + OPENAI_KEY
+            },
+            body: JSON.stringify({
+                model: MODEL,
+                messages: chatMessage,
+                max_tokens: MAX_TOKENS,
+                temperature: TEMPERATURE
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const assistantMessage = data.choices[0].message.content;
+            chatMessage[chatMessage.length - 1] = {
+                role: 'assistant',
+                content: assistantMessage
+            };
+            displayChat();
+        });
+    }
+
+function displayChat() {
+    chatBox.innerHTML = '';
+    chatMessage.forEach(message => {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('chatMessage', message.role + 'Message');
+        if (message.role === 'system') {
+		messageElement.innerHTML = `<b>System prompt:</b> ${message.content}`;
+        } else {
+            messageElement.innerHTML = message.content;
+        }
+        chatBox.appendChild(messageElement);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+	displayChat();
+    </script>
+</body>
+</html>
