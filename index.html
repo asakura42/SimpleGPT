@@ -82,9 +82,9 @@
 
         const SYSTEM_PROMPT = "You are ChatGPT, a large language model trained by OpenAI. Answer as precisely as possible. Current date: " + new Date().toLocaleDateString() + ". Knowledge cutoff: 9/1/2021.";
         const OPENAI_KEY = 'pk-this-is-a-real-free-pool-token-for-everyone';
-        const MODEL = 'gpt-3.5-turbo';
+        const MODEL = 'gpt-3.5-turbo-16k';
         const TEMPERATURE = 0.5;
-        const MAX_TOKENS = 4000;
+        const MAX_TOKENS = 16384;
 	const AGENT_LENGTH = 10;
 
         let chatMessage = [
@@ -192,7 +192,7 @@ if(enableWebCheckbox.checked) {
 
 
 
-        function fetchOpenAI(prompt) {
+        function fetchOpenAI(prompt, retries = 10, delay = 3000) {
             const loadingElement = document.createElement('i');
             loadingElement.innerText = 'loading...';
 
