@@ -216,7 +216,18 @@ if(enableWebCheckbox.checked) {
                     temperature: TEMPERATURE
                 })
             })
-            .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                if (retries > 0) {
+                    // Wait for 'delay' ms and then retry
+                    return new Promise(resolve => setTimeout(resolve, delay))
+                        .then(() => fetchOpenAI(prompt, retries - 1, delay));
+                } else {
+                    throw new Error('API request failed after ' + retries + ' retries');
+                }
+            }
+            return response.json();
+        })
             .then(data => {
                 const assistantMessage = data.choices[0].message.content;
                 chatMessage[chatMessage.length - 1] = {
