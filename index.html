@@ -27,7 +27,7 @@
         }
         #userInput {
             flex-grow: 1;
-            padding: 0.5em;
+            padding: 1em;
             border: 1px solid #ddd;
             border-radius: 5px;
         }
@@ -64,20 +64,25 @@
 <body>
     <div id="chatBox"></div>
     <div class="inputBar">
+        <label for="enableGptAgent">Auto Mode</label>
+        <input type="checkbox" id="enableGptAgent">
         <textarea id="userInput" placeholder="Enter a prompt"></textarea>
         <button id="sendButton">Send</button>
     </div>
+
 
     <script>
         const chatBox = document.getElementById('chatBox');
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
+	const enableGptAgentCheckbox = document.getElementById('enableGptAgent');
 
-        const SYSTEM_PROMPT = "You are ChatGPT, a large language model trained by OpenAI. Answer as concisely as possible. Current date: " + new Date().toLocaleDateString() + ". Knowledge cutoff: 9/1/2021.";
+        const SYSTEM_PROMPT = "You are ChatGPT, a large language model trained by OpenAI. Answer as precisely as possible. Current date: " + new Date().toLocaleDateString() + ". Knowledge cutoff: 9/1/2021.";
         const OPENAI_KEY = 'pk-this-is-a-real-free-pool-token-for-everyone';
         const MODEL = 'gpt-3.5-turbo';
-        const TEMPERATURE = 0.7;
+        const TEMPERATURE = 0.5;
         const MAX_TOKENS = 4000;
+	const AGENT_LENGTH = 10;
 
         let chatMessage = [
             {
@@ -95,55 +100,89 @@
             }
         });
 
-    function sendMessage() {
-        const userPrompt = userInput.value;
-        userInput.value = '';
+	function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-        if (userPrompt.trim() === '') return;
 
+async function sendMessage() {
+    const userPrompt = userInput.value;
+    userInput.value = '';
+
+    if (userPrompt.trim() === '') return;
+
+    if(enableGptAgentCheckbox.checked) {
+	    const stepListPrompt = `You are a task creation AI called AgentGPT. You are not a part of any system or device. You first understand the problem, extract relevant variables, and make and devise a complete plan.\n\nYou have the following objective "${userPrompt}". Create a list of ${AGENT_LENGTH} step-by-step actions to accomplish the goal. Return the response as a plain text list without any formatting, introduction, avoid bullet lists and avoid numbered lists.\n\nExample of the answer:\n\nChoose a topic.\nResearch the subject thoroughly.\nCreate an outline.\nWrite an engaging introduction.\nDevelop the main body with key points.\nProvide evidence and examples.\nCraft a compelling conclusion.\nEdit and proofread for errors.\nFormat the article appropriately.\nPublish and share your work.\n`;
+        chatMessage.push({
+            role: 'user',
+            content: stepListPrompt
+        });
+        displayChat();
+        const stepsResponse = await fetchOpenAI(stepListPrompt);
+        const steps = stepsResponse.split('\n');
+        for (const step of steps) {
+            const stepMessage = `Now you must accomplish this step: ${step} ; do this step and don't repeat it, just complete the task.`;
+            await delay(5000);  // Wait for 2 seconds
+            chatMessage.push({
+                role: 'user',
+                content: stepMessage
+            });
+            displayChat();
+            await fetchOpenAI(step);
+        }
+        const articlePrompt = `Based on all that info, ${userPrompt}.`;
+        chatMessage.push({
+            role: 'user',
+            content: articlePrompt
+        });
+        displayChat();
+        await fetchOpenAI(articlePrompt);
+    } else {
         chatMessage.push({
             role: 'user',
             content: userPrompt
         });
-
-        // Immediately display user message
         displayChat();
-
-	const loadingElement = document.createElement('i');
-	loadingElement.innerText = 'loading...';
-
-
-        // Immediately display loading dots
-	chatMessage.push({
-	    role: 'assistant',
-	    content: loadingElement.outerHTML
-	});
-
-        displayChat();
-
-        fetch('https://ai.fakeopen.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + OPENAI_KEY
-            },
-            body: JSON.stringify({
-                model: MODEL,
-                messages: chatMessage,
-                max_tokens: MAX_TOKENS,
-                temperature: TEMPERATURE
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            const assistantMessage = data.choices[0].message.content;
-            chatMessage[chatMessage.length - 1] = {
-                role: 'assistant',
-                content: assistantMessage
-            };
-            displayChat();
-        });
+        fetchOpenAI(userPrompt);
     }
+}
+
+
+        function fetchOpenAI(prompt) {
+            const loadingElement = document.createElement('i');
+            loadingElement.innerText = 'loading...';
+
+            chatMessage.push({
+                role: 'assistant',
+                content: loadingElement.outerHTML
+            });
+
+            displayChat();
+
+            return fetch('https://ai.fakeopen.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + OPENAI_KEY
+                },
+                body: JSON.stringify({
+                    model: MODEL,
+                    messages: chatMessage,
+                    max_tokens: MAX_TOKENS,
+                    temperature: TEMPERATURE
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const assistantMessage = data.choices[0].message.content;
+                chatMessage[chatMessage.length - 1] = {
+                    role: 'assistant',
+                    content: assistantMessage
+                };
+                displayChat();
+                return assistantMessage;
+            });
+        }
 
 function displayChat() {
     chatBox.innerHTML = '';
