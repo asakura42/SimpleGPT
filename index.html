@@ -127,18 +127,33 @@
 
                 const stepsResponse = await fetchOpenAI(stepListPrompt);
 
-                  if(enableWebCheckbox.checked) {
-                    const url = `https://searx.be/search?q=${encodeURIComponent(userPrompt)}`;
-                    const response = await fetch(url);
-                    const text = await response.text();
-                    const webMessage = `Web content in json: ${text}`;
-                    chatMessage.push({
-                        role: 'user',
-                        content: webMessage
-                    });
-                    displayChat();
-                    await fetchOpenAI(webMessage);
-                }
+if(enableWebCheckbox.checked) {
+  const words = userPrompt.split(' ');
+  const fetchPromises = words.map(word => {
+    const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(word)}&format=json&pretty=1&no_html=1`;
+    return fetch(url);
+  });
+  const responses = await Promise.all(fetchPromises);
+  const jsonPromises = responses.map(response => response.json());
+  const jsons = await Promise.all(jsonPromises);
+
+  const resultsTexts = jsons.flatMap(json => {
+    return json.RelatedTopics.map(topic => ({
+      result: topic.Result,
+      text: topic.Text
+    }));
+  });
+
+  const webMessage = 'Web results: ' + resultsTexts.map(rt => `${rt.result} ${rt.text}`).join(', ');
+
+  chatMessage.push({
+    role: 'user',
+    content: webMessage
+  });
+  displayChat();
+  await fetchOpenAI(webMessage);
+}
+
 
                 const steps = stepsResponse.split('\n');
                 for (const step of steps) {
