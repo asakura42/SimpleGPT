@@ -8,7 +8,7 @@ Some lines were written with the help of Large Language Models.
 ## HTML/JS/CSS
 https://asakura42.github.io/SimpleGPT
 
-Web ChatGPT client without server part and the need of the API key.
+Web ChatGPT client without server part and the need of the API key. Additional functions: simple GPT agent and web-search for it (almost useless).
 
 `cloc` output:
 
