@@ -138,13 +138,17 @@ if(enableWebCheckbox.checked) {
   const jsons = await Promise.all(jsonPromises);
 
   const resultsTexts = jsons.flatMap(json => {
-    return json.RelatedTopics.map(topic => ({
-      result: topic.Result,
-      text: topic.Text
-    }));
+    if (json.RelatedTopics.length > 0) {
+      const firstTopic = json.RelatedTopics[0];
+      return {
+        result: firstTopic.Result,
+        text: firstTopic.Text
+      };
+    }
+    return [];
   });
 
-  const webMessage = 'Web results: ' + resultsTexts.map(rt => `${rt.result} ${rt.text}`).join(', ');
+  const webMessage = 'Web dictionary results (it may or may not be related): ' + resultsTexts.map(rt => `${rt.result} ${rt.text}`).join(', ');
 
   chatMessage.push({
     role: 'user',
@@ -153,6 +157,7 @@ if(enableWebCheckbox.checked) {
   displayChat();
   await fetchOpenAI(webMessage);
 }
+
 
 
                 const steps = stepsResponse.split('\n');
