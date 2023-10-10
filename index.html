@@ -66,6 +66,8 @@
     <div class="inputBar">
         <label for="enableGptAgent">Auto Mode</label>
         <input type="checkbox" id="enableGptAgent">
+	<label for="enableWeb">Web</label>
+        <input type="checkbox" id="enableWeb">
         <textarea id="userInput" placeholder="Enter a prompt"></textarea>
         <button id="sendButton">Send</button>
     </div>
@@ -76,6 +78,7 @@
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
 	const enableGptAgentCheckbox = document.getElementById('enableGptAgent');
+	const enableWebCheckbox = document.getElementById('enableWeb');
 
         const SYSTEM_PROMPT = "You are ChatGPT, a large language model trained by OpenAI. Answer as precisely as possible. Current date: " + new Date().toLocaleDateString() + ". Knowledge cutoff: 9/1/2021.";
         const OPENAI_KEY = 'pk-this-is-a-real-free-pool-token-for-everyone';
@@ -105,47 +108,68 @@
 }
 
 
-async function sendMessage() {
-    const userPrompt = userInput.value;
-    userInput.value = '';
 
-    if (userPrompt.trim() === '') return;
+        async function sendMessage() {
+            const userPrompt = userInput.value;
+            userInput.value = '';
 
-    if(enableGptAgentCheckbox.checked) {
-	    const stepListPrompt = `You are a task creation AI called AgentGPT. You are not a part of any system or device. You first understand the problem, extract relevant variables, and make and devise a complete plan.\n\nYou have the following objective "${userPrompt}". Create a list of ${AGENT_LENGTH} step-by-step actions to accomplish the goal. Return the response as a plain text list without any formatting, introduction, avoid bullet lists and avoid numbered lists.\n\nExample of the answer:\n\nChoose a topic.\nResearch the subject thoroughly.\nCreate an outline.\nWrite an engaging introduction.\nDevelop the main body with key points.\nProvide evidence and examples.\nCraft a compelling conclusion.\nEdit and proofread for errors.\nFormat the article appropriately.\nPublish and share your work.\n`;
-        chatMessage.push({
-            role: 'user',
-            content: stepListPrompt
-        });
-        displayChat();
-        const stepsResponse = await fetchOpenAI(stepListPrompt);
-        const steps = stepsResponse.split('\n');
-        for (const step of steps) {
-            const stepMessage = `Now you must accomplish this step: ${step} ; do this step and don't repeat it, just complete the task.`;
-            await delay(5000);  // Wait for 2 seconds
-            chatMessage.push({
-                role: 'user',
-                content: stepMessage
-            });
-            displayChat();
-            await fetchOpenAI(step);
+            if (userPrompt.trim() === '') return;
+
+            if(enableGptAgentCheckbox.checked) {
+                const stepListPrompt = `You are a task creation AI called AgentGPT. You are not a part of any system or device. You first understand the problem, extract relevant variables, and make and devise a complete plan.\n\nYou have the following objective "${userPrompt}". Create a list of ${AGENT_LENGTH} step-by-step actions to accomplish the goal. Return the response as a plain text list without any formatting, introduction, avoid bullet lists and avoid numbered lists.\n\nExample of the answer:\n\nChoose a topic.\nResearch the subject thoroughly.\nCreate an outline.\nWrite an engaging introduction.\nDevelop the main body with key points.\nProvide evidence and examples.\nCraft a compelling conclusion.\nEdit and proofread for errors.\nFormat the article appropriately.\nPublish and share your work.\n`;
+                chatMessage.push({
+                    role: 'user',
+                    content: stepListPrompt
+                });
+                displayChat();
+
+                // Fetch and parse content from DuckDuckGo if the Web checkbox is checked
+
+                const stepsResponse = await fetchOpenAI(stepListPrompt);
+
+                  if(enableWebCheckbox.checked) {
+                    const url = `https://searx.be/search?q=${encodeURIComponent(userPrompt)}`;
+                    const response = await fetch(url);
+                    const text = await response.text();
+                    const webMessage = `Web content in json: ${text}`;
+                    chatMessage.push({
+                        role: 'user',
+                        content: webMessage
+                    });
+                    displayChat();
+                    await fetchOpenAI(webMessage);
+                }
+
+                const steps = stepsResponse.split('\n');
+                for (const step of steps) {
+                    const stepMessage = `Now you must accomplish this step: ${step}`;
+                    await delay(5000);  // Wait for 2 seconds
+                    chatMessage.push({
+                        role: 'user',
+                        content: stepMessage
+                    });
+                    displayChat();
+                    await fetchOpenAI(step);
+                }
+
+
+                const articlePrompt = `Based on all that info, ${userPrompt}.`;
+                chatMessage.push({
+                    role: 'user',
+                    content: articlePrompt
+                });
+                displayChat();
+                await fetchOpenAI(articlePrompt);
+            } else {
+                chatMessage.push({
+                    role: 'user',
+                    content: userPrompt
+                });
+                displayChat();
+                fetchOpenAI(userPrompt);
+            }
         }
-        const articlePrompt = `Based on all that info, ${userPrompt}.`;
-        chatMessage.push({
-            role: 'user',
-            content: articlePrompt
-        });
-        displayChat();
-        await fetchOpenAI(articlePrompt);
-    } else {
-        chatMessage.push({
-            role: 'user',
-            content: userPrompt
-        });
-        displayChat();
-        fetchOpenAI(userPrompt);
-    }
-}
+
 
 
         function fetchOpenAI(prompt) {
